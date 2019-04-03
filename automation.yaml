@@ -1,0 +1,104 @@
+---
+description: "Automation Document Example YAML Template"
+schemaVersion: "0.3"
+# assumeRole: "{{ AutomationAssumeRole }}"
+
+parameters:
+  autoScalingGroupName:
+    type: String
+    description: "(Required) Auto Scaling group name."
+
+mainSteps:
+- name: launchInstance
+  action: aws:executeAwsApi
+  onFailure: Abort
+  inputs:
+    Service: ec2
+    Api: RunInstances
+    ImageId: ami-08d658f84a6d84a80
+    InstanceType: t2.micro
+    MinCount: 1
+    MaxCount: 1
+    SubnetId: ${subnet}
+    KeyName: id_rsa_airwalk
+    IamInstanceProfile:
+      # Arn: arn:aws:iam::845769993878:instance-profile/ssm-mikolaj-test-role
+      Arn: arn:aws:iam::100464047589:instance-profile/mikolaj-admin-inspector-role
+      # Name: ssm-mikolaj-test-role
+    UserData: |
+        #! /bin/bash
+        cd /tmp
+        wget https://inspector-agent.amazonaws.com/linux/latest/install
+        sudo bash install
+    TagSpecifications:
+    - ResourceType: instance
+      Tags:
+      - Key: LaunchedBy
+        Value: SSMAutomation
+  outputs:
+  - Name: InstanceId
+    Selector: "$.Instances[0].InstanceId"
+    Type: "String"
+
+- name: waitUntilInstanceStateRunning
+  action: aws:waitForAwsResourceProperty
+  timeoutSeconds: 300
+  inputs:
+    Service: ec2
+    Api: DescribeInstanceStatus
+    InstanceIds:
+    - "{{ launchInstance.InstanceId }}"
+    PropertySelector: "$.InstanceStatuses[0].InstanceState.Name"
+    DesiredValues:
+    - running
+
+- name: sleepUntilInstanceProvisioned
+  action: aws:sleep
+  inputs:
+    Duration: PT1M
+
+- name: stopInstance
+  action: aws:changeInstanceState
+  maxAttempts: 3
+  timeoutSeconds: 300
+  onFailure: Abort
+  inputs:
+    InstanceIds:
+    - "{{ launchInstance.InstanceId }}"
+    CheckStateOnly: false
+    DesiredState: stopped
+
+- name: createImage
+  action: aws:createImage
+  maxAttempts: 3
+  onFailure: Abort
+  inputs:
+    InstanceId: "{{ launchInstance.InstanceId }}"
+    ImageName: AMI Created on{{global:DATE_TIME}}
+    NoReboot: false
+    ImageDescription: My newly created AMI
+
+- name: terminateInstance
+  action: aws:changeInstanceState
+  maxAttempts: 3
+  timeoutSeconds: 300
+  onFailure: Abort
+  inputs:
+    InstanceIds:
+    - "{{ launchInstance.InstanceId }}"
+    CheckStateOnly: false
+    DesiredState:  terminated
+
+- name: invokeMyLambdaFunction
+  action: aws:invokeLambdaFunction
+  maxAttempts: 3
+  timeoutSeconds: 120
+  onFailure: Abort
+  inputs:
+    FunctionName: ${lambda_function_name}
+    InvocationType: Event
+    Payload: |
+        {
+            "amiId": "{{ createImage.ImageId }}",
+            "autoScalingGroupName": "{{ autoScalingGroupName }}"
+        }
