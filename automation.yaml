@@ -7,6 +7,9 @@ parameters:
   autoScalingGroupName:
     type: String
     description: "(Required) Auto Scaling group name."
+  baseAmiId:
+    type: String
+    description: "(Required) base Ami Id from which new images should be built."
 
 mainSteps:
 - name: launchInstance
@@ -15,7 +18,9 @@ mainSteps:
   inputs:
     Service: ec2
     Api: RunInstances
-    ImageId: ami-08d658f84a6d84a80
+    # ImageId: ami-08d658f84a6d84a80
+    ImageId: "{{ baseAmiId }}"
+
     InstanceType: t2.micro
     MinCount: 1
     MaxCount: 1
@@ -23,7 +28,8 @@ mainSteps:
     KeyName: id_rsa_airwalk
     IamInstanceProfile:
       # Arn: arn:aws:iam::845769993878:instance-profile/ssm-mikolaj-test-role
-      Arn: arn:aws:iam::100464047589:instance-profile/mikolaj-admin-inspector-role
+      # Arn: arn:aws:iam::100464047589:instance-profile/mikolaj-admin-inspector-role
+      Arn: ${instance_profile}
       # Name: ssm-mikolaj-test-role
     UserData: |
         #! /bin/bash
@@ -52,10 +58,17 @@ mainSteps:
     DesiredValues:
     - running
 
-- name: sleepUntilInstanceProvisioned
-  action: aws:sleep
+# here we assume that ssm agent is already installed
+- name: provisionInstance
+  action: aws:runCommand
   inputs:
-    Duration: PT1M
+    DocumentName: AWS-RunShellScript
+    InstanceIds:
+    - "{{ launchInstance.InstanceId }}"
+    Parameters:
+      commands: "ls -hal; echo 'provision instance'"
+      workingDirectory: "/"
+      executionTimeout: "60"
 
 - name: stopInstance
   action: aws:changeInstanceState
