@@ -35,6 +35,7 @@ data "template_file" "ssm_automation_document" {
     subnet               = "${module.vpc.private_subnet_ids[0]}"
     lambda_function_name = "${module.ami_pipeline_function.lambda_function["name"]}"
     instance_profile     = "${aws_iam_instance_profile.instance_profile.arn}"
+    assume_role = "${aws_iam_role.automation_role.arn}"
   }
 }
 
@@ -48,7 +49,7 @@ resource "aws_ssm_document" "ami_pipeline" {
 
 resource "aws_launch_template" "launch_template" {
   name_prefix   = "launch-template"
-  image_id      = "ami-08d658f84a6d84a80"
+  image_id      = "${var.base_ami_id}"
   instance_type = "t2.micro"
 }
 
@@ -67,6 +68,16 @@ resource "aws_autoscaling_group" "autoscaling_group" {
 module "ami_pipeline_function" {
   source = "modules/lambda"
   name   = "ami_pipeline"
+}
+
+module "ami_pipeline_function_trigger" {
+  source = "modules/automation_trigger"
+  name   = "ami_pipeline_trigger"
+
+  auto_scaling_group_name = "${aws_autoscaling_group.autoscaling_group.name}"
+  base_ami_id = "${var.base_ami_id}"
+  ami_age =  "${var.ami_age}"
+  schedule_expression = "${var.schedule_expression}"
 }
 
 resource "aws_iam_instance_profile" "instance_profile" {
@@ -100,4 +111,65 @@ resource "aws_iam_policy_attachment" "main" {
   name       = "ami-pipeline-instance-role"
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMFullAccess"
   roles      = ["${aws_iam_role.role.name}"]
+}
+
+resource "aws_iam_role" "automation_role" {
+  name = "ami-pipeline-automation-role"
+  path = "/"
+
+  assume_role_policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": "sts:AssumeRole",
+            "Principal": {
+                "Service": [
+                    "ec2.amazonaws.com",
+                    "ssm.amazonaws.com"
+                ]
+            },
+            "Effect": "Allow",
+            "Sid": ""
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_policy" "automation_policy" {
+  name = "ami-pipeline-automation-policy"
+
+  policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:*",
+                "iam:PassRole"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:InvokeFunction"
+            ],
+            "Resource": "${module.ami_pipeline_function.lambda_function["arn"]}"
+        }
+    ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "test-attach" {
+  role       = "${aws_iam_role.automation_role.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole"
+}
+
+resource "aws_iam_role_policy_attachment" "test-attach-1" {
+  role       = "${aws_iam_role.automation_role.name}"
+  policy_arn = "${aws_iam_policy.automation_policy.arn}"
 }

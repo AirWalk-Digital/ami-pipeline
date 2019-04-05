@@ -1,7 +1,7 @@
 ---
 description: "Automation Document Example YAML Template"
 schemaVersion: "0.3"
-# assumeRole: "{{ AutomationAssumeRole }}"
+assumeRole: "${assume_role}"
 
 parameters:
   autoScalingGroupName:

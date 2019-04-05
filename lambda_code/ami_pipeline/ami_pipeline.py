@@ -1,12 +1,9 @@
 import time
 
-from pprint import pprint as pp
-
 import boto3
 
 
 def handler(event, context):
-    pp(event)
     as_client = boto3.client('autoscaling')
     ec2_client = boto3.client('ec2')
     asg_client = boto3.client('autoscaling')
@@ -48,11 +45,3 @@ def handler(event, context):
             InstanceIds=[instance['InstanceId']],
         )
         time.sleep(60)
-
-
-#  EVENT = {
-    #  "amiId": "ami-093121780b4daea6f",
-    #  "autoScalingGroupName": "tf-asg-20190402104027109600000001"
-#  }
-
-#  handler(EVENT, None)
