@@ -27,10 +27,7 @@ mainSteps:
     SubnetId: ${subnet}
     KeyName: id_rsa_airwalk
     IamInstanceProfile:
-      # Arn: arn:aws:iam::845769993878:instance-profile/ssm-mikolaj-test-role
-      # Arn: arn:aws:iam::100464047589:instance-profile/mikolaj-admin-inspector-role
       Arn: ${instance_profile}
-      # Name: ssm-mikolaj-test-role
     UserData: |
         #! /bin/bash
         cd /tmp
@@ -66,7 +63,10 @@ mainSteps:
     InstanceIds:
     - "{{ launchInstance.InstanceId }}"
     Parameters:
-      commands: "ls -hal; echo 'provision instance'"
+      commands: |
+          DEBIAN_FRONTEND=noninteractive;
+          sudo apt-get update;
+          sudo apt-get upgrade -y;
       workingDirectory: "/"
       executionTimeout: "60"
 
