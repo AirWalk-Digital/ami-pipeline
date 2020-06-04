@@ -1,3 +1,3 @@
-bucket = "100464047589-ccf-tfstate"
+bucket = "your_account_id-ccf-tfstate"
 key = "ami-pipeline.tfstate"
 region = "eu-west-1"

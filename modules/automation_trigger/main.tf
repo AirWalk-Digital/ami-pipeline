@@ -105,7 +105,6 @@ resource "aws_lambda_permission" "cloudwatch_schedule" {
   source_arn    = "${aws_cloudwatch_event_rule.schedule.arn}"
 }
 
-
 output "lambda_function" {
   value = {
     name = "${var.name}"

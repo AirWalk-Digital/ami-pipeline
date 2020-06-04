@@ -2,7 +2,7 @@
 
 
 ## Overview
-This repository provides example of AMI Pipeline using set of Lambda functions and SSM automation, to create and deploy AMI image in ASG. It also contains configuartion for example ASG for which pipeline will be configured.
+This repository provides an example of an AMI Pipeline using a set of Lambda functions and SSM automation, to create and deploy an AMI image in an ASG. It also contains configuartion for an example ASG for which a pipeline will be configured.
 
 ## Deployment
 
@@ -21,7 +21,7 @@ rm ./build.plan
 
 ## Pipeline
 
-Pipeline is triggered by CloudWatch rule scheduled to run daily, which invokes lambda function `ami_pipeline_trigger` which responsibility is to assess if AMI id used in launch template for specific ASG is older than `n` days and if so to start SSM automation `ami-pipeline` to build new image.
+Pipeline is triggered by a CloudWatch rule scheduled to run daily, which invokes the Lambda function `ami_pipeline_trigger` whose responsibility is to assess if the AMI ID used in the launch template for a specific ASG is older than `n` days and if so to start the SSM automation `ami-pipeline` to build a new image.
 
 SSM automations contains number of steps:
 
@@ -33,11 +33,11 @@ SSM automations contains number of steps:
   - invoke lambda function `ami_pipeline` to handle roll out of newly created AMI
 
 
-`ami_pipeline` is responsible for updating launch template with newly created AMI Id, once that is done it will attempt roll out it across ASG by terminating one instance at the time, which should be automatically re launched by ASG.
+`ami_pipeline` is responsible for updating the launch template with the newly created AMI ID Once that is done it will attempt roll it out across the ASG by terminating one instance at the time, which should be automatically re-launched by the ASG.
 
 ### Considerations
 
   - IAM policies should be revisited and narrowed down
-  - Better we to roll out new AMI (1 instance at the time won't scale for larger ASGs)
-  - Ideally AMIs should be build in separate subnet
+  - Better way to roll out new AMI (1 instance at the time won't scale for larger ASGs)
+  - Ideally AMIs should be built in separate subnet
 

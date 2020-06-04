@@ -25,7 +25,7 @@ mainSteps:
     MinCount: 1
     MaxCount: 1
     SubnetId: ${subnet}
-    KeyName: id_rsa_airwalk
+    KeyName: id_rsa_example
     IamInstanceProfile:
       Arn: ${instance_profile}
     UserData: |
